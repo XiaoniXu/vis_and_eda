@@ -9,6 +9,8 @@ editor_options:
 
 ```{r setup, include = FALSE}
 library(tidyverse)
+library(ggridges)
+library(patchwork)
 ```
 
 ```{r}
@@ -99,5 +101,129 @@ weather_df %>%
   geom_point() +
   geom_smooth(method = 'lm', se = FALSE)
 ```
+
+Smol things
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_hex()
+```
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_point(color = "blue")
+
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax), color = "blue") + # "blue" is not in the dataset
+  geom_point()
+```
+
+## Univariate plots
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin)) +
+  geom_histogram()
+```
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, fill = name)) + # difficult to understand and hard to read if use color = name, according to JEFF
+  geom_histogram(position = "dodge")
+```
+
+How would JEFF fix this?
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, fill = name)) +
+  geom_histogram() +
+  facet_grid(. ~ name)
+```
+
+Maybe a density plot?
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, fill = name)) +
+  geom_density(alpha = .3)
+```
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = name, y = tmin, fill = name)) +
+  geom_boxplot()
+```
+
+Violin plots
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = name, y = tmin, fill = name)) +
+  geom_violin()
+```
+
+Ridge plot
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, y = name)) +
+  geom_density_ridges()
+```
+
+Learning Assessment: Make plots that compare precipitation across locations. Try a histogram, a density plot, a boxplot, a violin plot, and a ridgeplot; use aesthetic mappings to make your figure readable.
+
+```{r}
+# Histogram
+histogram_plot <- weather_df %>%
+  ggplot(aes(x = prcp, fill = name)) +
+  geom_histogram(position = "dodge", bins = 30, alpha = 0.7) +
+  labs(title = "Precipitation Histogram") +
+  theme_minimal()
+
+# Density Plot
+density_plot <- weather_df %>%
+  ggplot(aes(x = prcp, fill = name)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Precipitation Density Plot") +
+  theme_minimal()
+
+# Boxplot
+boxplot_plot <- weather_df %>%
+  ggplot(aes(x = name, y = prcp, fill = name)) +
+  geom_boxplot() +
+  labs(title = "Precipitation Boxplot") +
+  theme_minimal()
+
+# Violin Plot
+violin_plot <- weather_df %>%
+  ggplot(aes(x = name, y = prcp, fill = name)) +
+  geom_violin() +
+  labs(title = "Precipitation Violin Plot") +
+  theme_minimal()
+
+# Ridge Plot
+ridge_plot <- weather_df %>%
+  ggplot(aes(x = prcp, y = name, fill = name)) +
+  geom_density_ridges(aes(height = ..density..), alpha = 0.7) +  # Ensure height aesthetic is specified
+  labs(title = "Precipitation Ridge Plot") +
+  theme_minimal()
+
+# Combine all plots
+combined_plot <- (histogram_plot | density_plot) / 
+                 (boxplot_plot | violin_plot) / 
+                 ridge_plot
+
+# Display the combined plot
+print(combined_plot)
+
+weather_df %>%
+  filter(prcp > 10, prcp < 1000) %>% 
+  ggplot(aes(x = prcp, fill = name)) +
+  geom_density(alpha = .3)
+```
+
+
 
 
