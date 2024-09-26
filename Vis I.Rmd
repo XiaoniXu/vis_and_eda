@@ -46,3 +46,58 @@ ggp_weather_scatterplot =
 ggp_weather_scatterplot
 ```
 
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = .3, size = .8) + 
+  geom_smooth(se = FALSE)
+```
+
+Where you definte aesthetics can matter
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_point(aes(color = name), alpha = .3, size = .8) + 
+  geom_smooth(se = FALSE)
+```
+
+Use faceting
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = .3) +
+  geom_smooth(se = FALSE) +
+  facet_grid(. ~ name) 
+
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = .3) +
+  geom_smooth(se = FALSE) +
+  facet_grid(name ~ .) # horizontal
+```
+
+Let's make a somewhat more interesting scatterplot
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = date, y = tmax, color = name, size = prcp)) +
+  geom_point(alpha = .3) + #see the seasonal trends
+  geom_smooth(se = FALSE) +
+  facet_grid(. ~ name)
+```
+
+Learning assessment: Write a code chain that starts with weather_df; focuses only on Central Park, converts temperatures to Fahrenheit, makes a scatterplot of min vs. max temperature, and overlays a linear regression line (using options in geom_smooth()).
+```{r}
+weather_df %>%
+  filter(name == "CentralPark_NY") %>%  # Filter for Central Park
+  mutate(
+    tmax_fahr = tmax * (9 / 5) + 32,
+    tmin_fahr = tmin * (9 / 5) + 32
+  ) %>% 
+  ggplot(aes(x = tmin_fahr, y = tmax_fahr)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = FALSE)
+```
+
+
