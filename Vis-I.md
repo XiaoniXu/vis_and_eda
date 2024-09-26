@@ -415,3 +415,31 @@ weather_df %>%
 ```
 
 ![](Vis-I_files/figure-gfm/unnamed-chunk-18-2.png)<!-- -->
+
+## Saving and embedding plots
+
+``` r
+ggp_weather =
+  weather_df %>% 
+  ggplot(aes(x = date, y = tmax, color = name)) +
+  geom_point()
+
+# create a folder to save all the stuff if you know you need to make a lot of plots
+ggsave("plots/ggp_weather.pdf", ggp_weather, width = 8, height = 6)
+```
+
+    ## Warning: Removed 17 rows containing missing values or values outside the scale range
+    ## (`geom_point()`).
+
+embedding plots
+
+``` r
+weather_df %>% 
+  ggplot(aes(x = date, y = tmax, color = name)) +
+  geom_point()
+```
+
+    ## Warning: Removed 17 rows containing missing values or values outside the scale range
+    ## (`geom_point()`).
+
+![](Vis-I_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
