@@ -10,6 +10,8 @@ editor_options:
 ```{r setup, include = FALSE}
 library(tidyverse)
 library(patchwork)
+library(viridis)
+library(haven)
 ```
 
 ```{r}
@@ -76,7 +78,7 @@ weather_df |>
     labels = c("-15º C", "0", "15"))
 ```
 
-There are a variety of other `scale_x_*` and `scale_y_*` options – it can be helpful to know how and where these are controlled, although I usually would have to google how to do what I want.
+There are a variety of other `scale_x_*` and `scale_y_*` options – it can be helpful to know how and where these are controlled.
 
 ```{r}
 weather_df |> 
@@ -89,15 +91,15 @@ weather_df |>
     color = "Location",
     caption = "Data from the rnoaa package") + 
   scale_x_continuous(
-    breaks = c(-15, 0, 15), 
-    labels = c("-15ºC", "0", "15"),
+    breaks = c(-15, 0, 20), 
+    labels = c("-15ºC", "0", "20"),
     limits = c(-20, 30)) + 
   scale_y_continuous(
     trans = "sqrt", 
     position = "right")
 ```
 
-For example, arguments to scale_color_hue() control the color scale and the name in the plot legend.
+For example, arguments to `scale_color_hue()` control the color scale and the name in the plot legend.
 
 ```{r}
 weather_df |> 
@@ -111,6 +113,220 @@ weather_df |>
     caption = "Data from the rnoaa package") + 
   scale_color_hue(h = c(100, 300))
 ```
+
+Trying to create your own color scheme usually doesn’t go well; use the `viridis` package instead. There are several options, but the default color scheme works nicely!
+
+
+```{r}
+ggp_temp_plot = 
+  weather_df |> 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    color = "Location",
+    caption = "Data from the rnoaa package"
+  ) + 
+  viridis::scale_color_viridis(
+    name = "Location", 
+    discrete = TRUE
+  )
+
+ggp_temp_plot
+```
+
+## Themes
+```{r}
+ggp_temp_plot + 
+  theme(legend.position = "bottom")
+```
+`legend.position = "none"` will remove the legend. This is helpful when multiple plots use the same color scheme or when the legend is obnoxious for some other reason.
+
+
+
+```{r}
+ggp_temp_plot + 
+  theme_bw() + 
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggp_temp_plot + 
+  theme_classic() + 
+  theme(legend.position = "bottom")
+```
+
+```{r}
+ggp_temp_plot + 
+  ggthemes::theme_excel() + 
+  theme(legend.position = "bottom")
+```
+
+
+Revisit the plot showing tmax against date for each location. Use labels, scale options, and theme changes to improve the readability of this plot.
+```{r}
+weather_df %>%
+  ggplot(aes(x = date, y = tmax, color = name, SIZE = prcp)) +
+  geom_point(size = 2, alpha = 0.3) +  # Adjust point size and transparency for readability
+  geom_smooth(se = FALSE) +
+  scale_color_viridis(
+    name = "Location", 
+    discrete = TRUE, 
+    option = "viridis"  # Use the 'mako' color palette
+  ) +
+  labs(
+    title = "Date-Temperature Plot",
+    x = "Date",
+    y = "Maximum Daily Temperature (°C)",
+    color = "Location",
+    caption = "Maximum temperature against date for each location",
+    size = "Precipitation"
+  ) +
+  theme_minimal()+
+  theme(
+    plot.title = element_text(hjust = 0.5),  # Center the title
+    axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate x-axis labels for better fit
+  )
+  
+```
+
+Extra bonus stuff in `ggplot`
+
+Use different datasets in different `geom`s
+```{r}
+central_park_df =
+  weather_df %>% 
+  filter(name == "CentralPark_NY")
+
+molokai_df = 
+  weather_df %>% 
+  filter(name == "Molokai_HI")
+
+molokai_df %>% 
+  ggplot(aes(x = date, y = tmax, color = name)) +
+  geom_point() +
+  geom_line(data = central_park_df)
+```
+
+
+## Multiple panels
+
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmax, fill = name)) +
+  geom_density() +
+  facet_grid(. ~ name)
+```
+
+```{r}
+tmax_tmin_p = 
+  weather_df |> 
+  ggplot(aes(x = tmax, y = tmin, color = name)) + 
+  geom_point(alpha = .5) +
+  theme(legend.position = "none")
+
+prcp_dens_p = 
+  weather_df |> 
+  filter(prcp > 0) |> 
+  ggplot(aes(x = prcp, fill = name)) + 
+  geom_density(alpha = .5) + 
+  theme(legend.position = "none")
+
+tmax_date_p = 
+  weather_df |> 
+  ggplot(aes(x = date, y = tmax, color = name)) + 
+  geom_point(alpha = .5) +
+  geom_smooth(se = FALSE) + 
+  theme(legend.position = "bottom")
+
+(tmax_tmin_p + prcp_dens_p) / tmax_date_p
+```
+
+## Data Manipulation
+
+You can change the order level of a factor variable to your specified preference using `forcats::fct_relevel` or according to the value of another variable using `forcats::fct_reorder`.
+
+A first example reorders `name` “by hand”:
+```{r}
+weather_df |>
+  mutate(name = forcats::fct_relevel(name, c("Molokai_HI", "CentralPark_NY", "Waterhole_WA"))) |> 
+  ggplot(aes(x = name, y = tmax)) + 
+  geom_violin(aes(fill = name), color = "blue", alpha = .5) + 
+  theme(legend.position = "bottom")
+```
+
+A more difficult situation relates to data tidyiness. Suppose I wanted to create a three-panel plot showing densities for `tmax` and `tmin` within each location. More concretely, I want to be able to facet panels across the `name` variable, and create separate densities for `tmax` and ``tmin` in each panel. Unfortunately, `weather_df` isn’t organized in a way that makes this easy.
+
+One solution would recognize that `tmax` and `tmin` are separate observation types of a shared `temperature` variable. With this understanding, it’s possible to tidy the `weather_df` and make the plot directly:
+
+```{r}
+weather_df |>
+  select(name, tmax, tmin) |> 
+  pivot_longer(
+    tmax:tmin,
+    names_to = "observation", 
+    values_to = "temp") |> 
+  ggplot(aes(x = temp, fill = observation)) +
+  geom_density(alpha = .5) + 
+  facet_grid(~name) + 
+  viridis::scale_fill_viridis(discrete = TRUE)
+```
+
+The code below imports and tidies the PULSE data, and creates a plot showing BDI score across visits. Some steps that are helpful in retrospect are using `pivot_longer` to organize the BDI score and visit time variables, and organizing the visit time variable into a factor with an informative ordering.
+
+```{r}
+pulse_data = 
+  haven::read_sas("./data/public_pulse_data.sas7bdat") |>
+  janitor::clean_names() |>
+  pivot_longer(
+    bdi_score_bl:bdi_score_12m,
+    names_to = "visit", 
+    names_prefix = "bdi_score_",
+    values_to = "bdi") |>
+  select(id, visit, everything()) |>
+  mutate(
+    visit = recode(visit, "bl" = "00m"),
+    visit = factor(visit, levels = str_c(c("00", "01", "06", "12"), "m"))) |>
+  arrange(id, visit)
+
+ggplot(pulse_data, aes(x = visit, y = bdi)) + 
+  geom_boxplot()
+```
+
+Revisit FAS data
+```{r}
+pup_data = 
+  read_csv("./data/FAS_pups.csv", na = c("NA", ".", "")) |>
+  janitor::clean_names() |>
+  mutate(
+    sex = 
+      case_match(
+        sex, 
+        1 ~ "male", 
+        2 ~ "female"))
+
+litter_data = 
+  read_csv("./data/FAS_litters.csv", na = c("NA", ".", "")) |>
+  janitor::clean_names() |>
+  separate(group, into = c("dose", "day_of_tx"), sep = 3)
+
+fas_data = left_join(pup_data, litter_data, by = "litter_number") 
+
+fas_data |> 
+  select(sex, dose, day_of_tx, pd_ears:pd_walk) |> 
+  pivot_longer(
+    pd_ears:pd_walk,
+    names_to = "outcome", 
+    values_to = "pn_day") |> 
+  drop_na() |> 
+  mutate(outcome = forcats::fct_reorder(outcome, pn_day, median)) |> 
+  ggplot(aes(x = dose, y = pn_day)) + 
+  geom_boxplot() + 
+  facet_grid(day_of_tx ~ outcome)
+```
+
 
 
 

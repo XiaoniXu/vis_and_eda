@@ -1,0 +1,141 @@
+---
+title: "Vis II"
+author: "Xiaoni Xu"
+date: "2024-10-01"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include = FALSE}
+library(tidyverse)
+library(patchwork)
+
+```
+
+# Exploratory analysis using data summaries
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728", "USW00022534", "USS0023B17S"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2021-01-01",
+    date_max = "2022-12-31") |>
+  mutate(
+    name = case_match(
+      id, 
+      "USW00094728" ~ "CentralPark_NY", 
+      "USW00022534" ~ "Molokai_HI",
+      "USS0023B17S" ~ "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10,
+    month = lubridate::floor_date(date, unit = "month")) |>
+  select(name, id, everything())
+```
+
+## Initial numeric explorations
+
+Making the histogram
+```{r}
+weather_df |> 
+  ggplot(aes(x = prcp)) + 
+  geom_histogram()
+
+weather_df |> 
+  filter(prcp >= 1000)
+```
+
+```{r}
+weather_df |> 
+  filter(tmax >= 20, tmax <= 30) |> 
+  ggplot(aes(x = tmin, y = tmax, color = name, shape = name)) + 
+  geom_point(alpha = .75)
+```
+
+## `group_by`
+```{r}
+weather_df |>
+  group_by(name, month)
+```
+
+## Counting things
+```{r}
+weather_df |>
+  group_by(month) |>
+  summarize(n_obs = n())
+```
+
+group by more than one variable
+```{r}
+weather_df |>
+  group_by(name, month) |>
+  summarize(n_obs = n())
+```
+In both cases, the result is a dataframe that includes the grouping variable(s) and the desired summary.
+
+To count things, you could use `count`() in place of `group_by`() and `summarize`() if you remember that this function exists. I’ll also make use of the `name` argument in `count`, which defaults to "n".
+```{r}
+weather_df |>
+  count(month, name = "n_obs")
+```
+
+You can use `summarize`() to compute multiple summaries within each group. As an example, we count the number of observations in each month and the number of distinct values of `date` in each month.
+```{r}
+weather_df |>
+  group_by(month) |>
+  summarize(
+    n_obs = n(),
+    n_days = n_distinct(date))
+```
+
+## 2x2
+
+```{r}
+weather_df %>% 
+  drop_na(tmax) %>% 
+  filter(name != "Molokai_HI") %>% 
+  mutate(cold = case_when(
+    tmax < 5 ~ "cold",
+    tmax >= 5 ~ "not_cold"
+  )) %>% 
+  janitor::tabyl(name, cold)
+# don't use the `table` function
+```
+
+## general numeric summaries
+
+let's try some other useful summaries
+
+summarize then plot...
+
+```{r}
+weather_df %>% 
+  group_by(name, month) %>% 
+  summarize(
+    mean_tmax = mean(tmax, na.rm = TRUE),
+    median_tmin = median(tmin, na.rm = TRUE),
+    sd_prcp = sd(prcp, na.rm = TRUE)
+  ) %>% 
+  ggplot(aes(x = month, y = mean_tmax, color = name)) +
+  geom_point() +
+  geom_line()
+```
+
+format for readers
+```{r}
+weather_df %>% 
+  group_by(name, month) %>% 
+  summarize(
+    mean_tmax = mean(tmax, na.rm = TRUE)
+  ) %>%
+  pivot_wider(
+    names_from = name, 
+    values_from = mean_tmax
+  ) %>% 
+  knitr::kable(
+  digits = 3,
+  col.names = c("Month", "Central Park", "Molokai", "Waterhole"))
+  
+```
+
